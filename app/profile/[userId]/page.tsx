@@ -14,9 +14,24 @@ interface EditProfileModal {
   twitterHandle: string;
 }
 
+interface PredictionData {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhotoURL: string;
+  coinId: string;
+  coinName: string;
+  price: number;
+  timeframe: string;
+  summary: string;
+  createdAt: Date;
+  votes: number;
+  researchLinks?: string[];
+}
+
 export default function UserProfile() {
   const params = useParams();
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [predictions, setPredictions] = useState<PredictionData[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);

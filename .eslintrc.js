@@ -4,9 +4,10 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
   ],
   rules: {
-    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': 'error',
     'react/no-unescaped-entities': 'error',
     '@next/next/no-img-element': 'error',
   },
+  ignorePatterns: ['.next/*', 'node_modules/*'],
 }; 

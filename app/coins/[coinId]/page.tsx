@@ -9,6 +9,19 @@ import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, getDoc, 
 import { Prediction } from '@/app/types';
 import Link from 'next/link';
 
+interface CoinData {
+  name: string;
+  symbol: string;
+  image: {
+    large: string;
+  };
+  market_data?: {
+    current_price?: {
+      usd: number;
+    };
+  };
+}
+
 interface Prediction {
   id: number;
   price: number;
@@ -86,7 +99,7 @@ const mockPredictions: Prediction[] = [
 
 export default function CoinPage() {
   const params = useParams();
-  const [coin, setCoin] = useState<any>(null);
+  const [coin, setCoin] = useState<CoinData | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
