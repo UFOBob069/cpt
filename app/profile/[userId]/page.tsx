@@ -6,13 +6,6 @@ import Link from 'next/link';
 import { db, auth } from '@/firebase/config';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { PencilIcon } from '@heroicons/react/24/outline';
-import { UserProfile, Prediction } from '@/app/types';
-
-interface EditProfileModal {
-  displayName: string;
-  description: string;
-  twitterHandle: string;
-}
 
 interface PredictionData {
   id: string;
@@ -27,6 +20,23 @@ interface PredictionData {
   createdAt: Date;
   votes: number;
   researchLinks?: string[];
+}
+
+interface UserProfile {
+  displayName: string;
+  photoURL: string;
+  totalVotes: number;
+  predictionCount: number;
+  averageVotes: number;
+  description?: string;
+  twitterHandle?: string;
+  userId: string;
+}
+
+interface EditProfileModal {
+  displayName: string;
+  description: string;
+  twitterHandle: string;
 }
 
 export default function UserProfile() {

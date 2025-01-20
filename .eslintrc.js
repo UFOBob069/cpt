@@ -5,7 +5,10 @@ module.exports = {
   ],
   rules: {
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-unused-vars': 'error',
+    '@typescript-eslint/no-unused-vars': ['error', { 
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+    }],
     'react/no-unescaped-entities': 'error',
     '@next/next/no-img-element': 'error',
   },

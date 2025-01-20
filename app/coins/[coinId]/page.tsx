@@ -1,11 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
+import { db, auth } from '../../../firebase/config';
+import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
-import PredictionForm from '@/app/components/PredictionForm';
-import { db, auth } from '@/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, getDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Prediction } from '@/app/types';
 import Link from 'next/link';
 
@@ -20,20 +19,6 @@ interface CoinData {
       usd: number;
     };
   };
-}
-
-interface Prediction {
-  id: number;
-  price: number;
-  timeframe: TimeFrame;
-  createdAt: string;
-  votes: number;
-  userId: string;
-  userName: string;
-  voters: Record<string, number>;
-  userPhotoURL?: string;
-  summary: string;
-  researchLinks?: string[];
 }
 
 type TimeFrame = 
