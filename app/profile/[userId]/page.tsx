@@ -4,8 +4,9 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { db, auth } from '@/firebase/config';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, setDoc, getDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { PencilIcon } from '@heroicons/react/24/outline';
+import { Timestamp } from 'firebase/firestore';
 
 interface PredictionData {
   id: string;
@@ -17,7 +18,7 @@ interface PredictionData {
   price: number;
   timeframe: string;
   summary: string;
-  createdAt: Date;
+  createdAt: Timestamp | Date;
   votes: number;
   researchLinks?: string[];
 }
@@ -38,6 +39,23 @@ interface EditProfileModal {
   description: string;
   twitterHandle: string;
 }
+
+interface UserDocument extends DocumentData {
+  displayName: string;
+  photoURL: string;
+  description: string;
+  twitterHandle: string;
+  email: string;
+  createdAt: Date;
+}
+
+// Helper function to format dates
+const formatDate = (timestamp: Timestamp | Date): string => {
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toDate().toLocaleDateString();
+  }
+  return timestamp.toLocaleDateString();
+};
 
 export default function UserProfile() {
   const params = useParams();
@@ -116,11 +134,12 @@ export default function UserProfile() {
       if (!params.userId) return;
 
       try {
-        // First try to get user data from users collection
-        const userDocRef = doc(db, 'users', params.userId);
+        // Fetch user document
+        const userDocRef = doc(db, 'users', params.userId as string);
         const userDoc = await getDoc(userDocRef);
-        
-        // Fetch predictions
+        const userData = userDoc.exists() ? userDoc.data() as UserDocument : null;
+
+        // Fetch user's predictions
         const predictionsRef = collection(db, 'predictions');
         const q = query(
           predictionsRef,
@@ -129,22 +148,22 @@ export default function UserProfile() {
         );
 
         const querySnapshot = await getDocs(q);
-        const userPredictions: any[] = [];
+        const userPredictions: PredictionData[] = [];
         let totalVotes = 0;
 
         querySnapshot.forEach((doc) => {
-          const prediction = {
+          const data = doc.data();
+          const prediction: PredictionData = {
             id: doc.id,
-            ...doc.data()
+            ...data,
+            createdAt: data.createdAt // Keep as Timestamp
           };
+          
           userPredictions.push(prediction);
           totalVotes += prediction.votes || 0;
         });
 
         setPredictions(userPredictions);
-
-        // Use user document data if it exists, fall back to prediction data
-        const userData = userDoc.exists() ? userDoc.data() : null;
         
         setProfile({
           displayName: userData?.displayName || userPredictions[0]?.userName || 'Unknown User',
@@ -175,16 +194,6 @@ export default function UserProfile() {
 
   if (loading) return <div className="p-8 text-center">Loading profile...</div>;
   if (!profile) return <div className="p-8 text-center">Profile not found</div>;
-
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate();
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">

@@ -26,7 +26,7 @@ const timeFrameLabels: Record<TimeFrame, string> = {
 export default function PredictionForm({ coinId, coinName, onClose, timeframe }: PredictionFormProps) {
   const [price, setPrice] = useState('');
   const [summary, setSummary] = useState('');
-  const [researchLinks, setResearchLinks] = useState('');
+  const [researchLinks, setResearchLinks] = useState(['']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,7 +53,7 @@ export default function PredictionForm({ coinId, coinName, onClose, timeframe }:
         price: parseFloat(price),
         timeframe,
         summary,
-        researchLinks: researchLinks.split('\n').filter(link => link.trim()),
+        researchLinks: researchLinks.filter(link => link.trim() !== ''),
         userId: auth.currentUser.uid,
         userName: auth.currentUser.displayName,
         userPhotoURL: auth.currentUser.photoURL,
@@ -131,13 +131,30 @@ export default function PredictionForm({ coinId, coinName, onClose, timeframe }:
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Research Links
             </label>
-            <textarea
-              value={researchLinks}
-              onChange={(e) => setResearchLinks(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              rows={3}
-              placeholder="Enter links to research (one per line)"
-            />
+            {researchLinks.map((link, index) => (
+              <div key={index} className="flex mb-2">
+                <input
+                  type="url"
+                  value={link}
+                  onChange={(e) => {
+                    const newLinks = [...researchLinks];
+                    newLinks[index] = e.target.value;
+                    setResearchLinks(newLinks);
+                  }}
+                  className="w-full p-2 border rounded"
+                  placeholder="https://..."
+                />
+                {index === researchLinks.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setResearchLinks([...researchLinks, ''])}
+                    className="ml-2 px-4 py-2 bg-blue-500 text-white rounded"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           {error && (

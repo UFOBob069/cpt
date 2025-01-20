@@ -7,6 +7,7 @@ import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, arrayUni
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { Prediction } from '@/app/types';
 import Link from 'next/link';
+import PredictionForm from '@/app/components/PredictionForm';
 
 interface CoinData {
   name: string;
