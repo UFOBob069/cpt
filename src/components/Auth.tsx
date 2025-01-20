@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { auth } from '@/src/firebase/firebase-client';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { User } from '../types';
 
 export default function Auth() {
   const [error, setError] = useState('');
@@ -22,6 +23,10 @@ export default function Auth() {
       setError(err.message);
     }
   };
+
+  const handleUser = (user: User | null) => {
+    // ... rest of the code
+  }
 
   return (
     <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">

@@ -35,7 +35,7 @@ const formatPrice = (price: number | null | undefined) => {
 };
 
 export default function CoinList({ coins = [], loading }: { coins?: Coin[], loading: boolean }) {
-  const [predictions, setPredictions] = useState<{ [key: string]: any }>({});
+  const [predictions, setPredictions] = useState<{ [key: string]: PredictionSummary }>({});
 
   useEffect(() => {
     const fetchPredictions = async () => {
@@ -43,7 +43,7 @@ export default function CoinList({ coins = [], loading }: { coins?: Coin[], load
 
       try {
         const predictionsRef = collection(db, 'predictions');
-        const allPredictions: { [key: string]: any } = {};
+        const allPredictions: { [key: string]: PredictionSummary } = {};
 
         for (const coin of coins) {
           const q = query(predictionsRef, where('coinId', '==', coin.id));

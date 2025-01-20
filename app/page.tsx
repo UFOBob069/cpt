@@ -4,6 +4,7 @@ import { auth } from "@/firebase/config";
 import { useState, useEffect } from "react";
 import HeroBanner from './components/HeroBanner';
 import CoinList from './components/CoinList';
+import Image from 'next/image';
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -76,9 +77,11 @@ export default function Home() {
             <p className="welcome-text">Please sign in with Google</p>
             <div className="auth-buttons">
               <button className="google-button" onClick={handleSignIn}>
-                <img 
-                  src="/google.svg" 
-                  alt="Google" 
+                <Image
+                  src="/google.svg"
+                  alt="Google"
+                  width={20}
+                  height={20}
                   className="google-icon"
                 />
                 Sign in with Google

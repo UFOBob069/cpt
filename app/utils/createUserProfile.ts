@@ -1,7 +1,8 @@
 import { db } from '@/firebase/config';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { User } from '../types';
 
-export async function createUserProfile(user: any) {
+export async function createUserProfile(user: User) {
   if (!user) return;
 
   const userRef = doc(db, 'users', user.uid);

@@ -6,7 +6,6 @@ import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import PredictionForm from '@/app/components/PredictionForm';
 import { db, auth } from '@/firebase/config';
 import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, getDoc, increment } from 'firebase/firestore';
-import Link from 'next/link';
 
 interface Prediction {
   id: number;
@@ -17,9 +16,6 @@ interface Prediction {
   userId: string;
   userName: string;
   voters: Record<string, number>;
-  userPhotoURL?: string;
-  summary: string;
-  researchLinks?: string[];
 }
 
 type TimeFrame = 
@@ -53,9 +49,7 @@ const mockPredictions: Prediction[] = [
     votes: 15,
     userId: '1',
     userName: 'CryptoExpert',
-    voters: {},
-    userPhotoURL: '/default-avatar.png',
-    summary: 'This is a summary of the prediction'
+    voters: {}
   },
   {
     id: 2,
@@ -65,9 +59,7 @@ const mockPredictions: Prediction[] = [
     votes: 8,
     userId: '2',
     userName: 'BitcoinBull',
-    voters: {},
-    userPhotoURL: '/default-avatar.png',
-    summary: 'This is a summary of the prediction'
+    voters: {}
   },
   {
     id: 3,
@@ -77,18 +69,16 @@ const mockPredictions: Prediction[] = [
     votes: -3,
     userId: '3',
     userName: 'CryptoBear',
-    voters: {},
-    userPhotoURL: '/default-avatar.png',
-    summary: 'This is a summary of the prediction'
+    voters: {}
   }
 ];
 
 export default function CoinPage() {
   const params = useParams();
-  const [coin, setCoin] = useState<any>(null);
+  const [coin, setCoin] = useState<CoinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [predictions, setPredictions] = useState<any[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeFrame>('q1_2025');
   const [showPredictionForm, setShowPredictionForm] = useState(false);
 
@@ -298,98 +288,79 @@ export default function CoinPage() {
 
             <div className="space-y-4">
               {filteredPredictions.map((prediction) => (
-                <div key={prediction.id} className="bg-white rounded-lg shadow-md p-6 mb-4">
-                  <div className="flex justify-between items-start mb-4">
-                    {/* User info with link to profile */}
-                    <Link 
-                      href={`/profile/${prediction.userId}`}
-                      className="flex items-center group"
-                    >
-                      <Image
-                        src={prediction.userPhotoURL || '/default-avatar.png'}
-                        alt={prediction.userName || 'User'}
-                        width={40}
-                        height={40}
-                        className="rounded-full mr-3"
-                      />
-                      <div>
-                        <span className="font-medium group-hover:text-blue-600 transition-colors">
-                          {prediction.userName || 'Anonymous'}
-                        </span>
-                        <div className="text-sm text-gray-500">
-                          {new Date(prediction.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </Link>
-
-                    {/* Price prediction */}
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">${prediction.price.toLocaleString()}</div>
-                      <div className="text-sm text-gray-500">{prediction.timeframe}</div>
-                    </div>
-                  </div>
-
-                  {/* Prediction summary */}
-                  <p className="text-gray-700 mb-4">{prediction.summary}</p>
-
-                  {/* Research links */}
-                  {prediction.researchLinks?.length > 0 && (
-                    <div className="mb-4">
-                      <div className="text-sm font-medium text-gray-700 mb-2">Research Links:</div>
-                      <div className="space-y-1">
-                        {prediction.researchLinks.map((link: string, index: number) => {
-                          const fullLink = link.startsWith('http') ? link : `https://${link}`;
-                          let displayUrl = link;
-                          try {
-                            const urlForParsing = link.startsWith('http') ? link : `https://${link}`;
-                            const url = new URL(urlForParsing);
-                            displayUrl = url.hostname;
-                          } catch (e) {
-                            console.error('Error parsing URL:', e);
-                          }
-
-                          return (
-                            <a
-                              key={index}
-                              href={fullLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block text-blue-600 hover:underline text-sm"
-                            >
-                              {displayUrl}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Voting section */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                <div key={prediction.id} className="border rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex flex-col items-center mr-4 w-16">
                       <button
                         onClick={() => handleVote(prediction.id, true)}
-                        className={`flex items-center space-x-1 ${
-                          prediction.voters?.[auth.currentUser?.uid] === 1 ? 'text-green-600' : 'text-gray-500'
+                        className={`text-gray-500 hover:text-green-500 ${
+                          prediction.voters?.[auth.currentUser?.uid] === 1 ? 'text-green-500' : ''
                         }`}
+                        disabled={!auth.currentUser}
                       >
-                        <ArrowUpIcon className="h-5 w-5" />
+                        <ArrowUpIcon className="h-6 w-6" />
                       </button>
-                      <span className={`font-medium ${
-                        prediction.votes > 0 ? 'text-green-600' : 
-                        prediction.votes < 0 ? 'text-red-600' : 
-                        'text-gray-600'
+                      <span className={`font-bold ${
+                        prediction.votes > 0 ? 'text-green-500' : 
+                        prediction.votes < 0 ? 'text-red-500' : 
+                        'text-gray-500'
                       }`}>
                         {prediction.votes || 0}
                       </span>
                       <button
                         onClick={() => handleVote(prediction.id, false)}
-                        className={`flex items-center space-x-1 ${
-                          prediction.voters?.[auth.currentUser?.uid] === -1 ? 'text-red-600' : 'text-gray-500'
+                        className={`text-gray-500 hover:text-red-500 ${
+                          prediction.voters?.[auth.currentUser?.uid] === -1 ? 'text-red-500' : ''
                         }`}
+                        disabled={!auth.currentUser}
                       >
-                        <ArrowDownIcon className="h-5 w-5" />
+                        <ArrowDownIcon className="h-6 w-6" />
                       </button>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-bold">${prediction.price.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500">
+                          {timeFrameLabels[prediction.timeframe as TimeFrame]}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 mb-2">{prediction.summary}</p>
+                      {prediction.researchLinks?.length > 0 && (
+                        <div className="text-sm text-blue-500">
+                          {prediction.researchLinks.map((link: string, index: number) => {
+                            // Ensure the link has a protocol
+                            const fullLink = link.startsWith('http') ? link : `https://${link}`;
+                            
+                            // Get display URL
+                            let displayUrl = link;
+                            try {
+                              // Add https:// temporarily if missing, just for parsing
+                              const urlForParsing = link.startsWith('http') ? link : `https://${link}`;
+                              const url = new URL(urlForParsing);
+                              displayUrl = url.hostname;
+                            } catch (e) {
+                              // If parsing fails, use the original link
+                              console.error('Error parsing URL:', e);
+                            }
+
+                            return (
+                              <a
+                                key={index}
+                                href={fullLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block hover:underline text-blue-600 mb-1"
+                              >
+                                {displayUrl}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-sm text-gray-600 mt-2">
+                        <span>by {prediction.userName}</span>
+                        <span>Posted on {new Date(prediction.createdAt).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

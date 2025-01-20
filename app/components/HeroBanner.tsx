@@ -13,7 +13,7 @@ export default function HeroBanner({ isLoggedIn }: HeroBannerProps) {
           Predict Crypto Prices Together
         </h1>
         <p className="hero-subtitle font-light">
-          Share price targets and vote on the community's best insights
+          Share price targets and vote on the community&apos;s best insights
         </p>
         <button className="hero-cta">
           {isLoggedIn ? "Add Your Next Prediction" : "Start Predicting Today"}
