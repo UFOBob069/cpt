@@ -6,34 +6,7 @@ import Link from 'next/link';
 import { db, auth } from '@/firebase/config';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { PencilIcon } from '@heroicons/react/24/outline';
-
-interface Prediction {
-  id: string;
-  coinId: string;
-  coinName: string;
-  price: number;
-  timeframe: string;
-  summary: string;
-  createdAt: any;
-  votes: number;
-  researchLinks: string[];
-  userId: string;
-  userName: string;
-  userPhotoURL: string;
-  userDescription?: string;
-  userTwitterHandle?: string;
-}
-
-interface UserProfile {
-  displayName: string;
-  photoURL: string;
-  totalVotes: number;
-  predictionCount: number;
-  averageVotes: number;
-  description?: string;
-  twitterHandle?: string;
-  userId: string;
-}
+import { UserProfile, Prediction } from '@/app/types';
 
 interface EditProfileModal {
   displayName: string;

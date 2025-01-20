@@ -5,7 +5,9 @@ import { useParams } from 'next/navigation';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import PredictionForm from '@/app/components/PredictionForm';
 import { db, auth } from '@/firebase/config';
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, getDoc, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, getDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { Prediction } from '@/app/types';
+import Link from 'next/link';
 
 interface Prediction {
   id: number;
@@ -16,13 +18,16 @@ interface Prediction {
   userId: string;
   userName: string;
   voters: Record<string, number>;
+  userPhotoURL?: string;
+  summary: string;
+  researchLinks?: string[];
 }
 
 type TimeFrame = 
-  | 'q1_2025' | 'q2_2025' | 'q3_2025' | 'q4_2025'
-  | 'q1_2026' | 'q2_2026' | 'y2026'
-  | 'y2027' | 'y2028' | 'y2029' | 'y2030'
-  | 'y2035' | 'y2040';
+  | 'q1_2025' | 'q2_2025' | 'q3_2025' | 'q4_2025' 
+  | 'q1_2026' | 'q2_2026' 
+  | '2026' | '2027' | '2028' | '2029' | '2030' 
+  | '2035' | '2040';
 
 const timeFrameLabels: Record<TimeFrame, string> = {
   q1_2025: 'Q1 2025',
@@ -31,13 +36,13 @@ const timeFrameLabels: Record<TimeFrame, string> = {
   q4_2025: 'Q4 2025',
   q1_2026: 'Q1 2026',
   q2_2026: 'Q2 2026',
-  y2026: '2026',
-  y2027: '2027',
-  y2028: '2028',
-  y2029: '2029',
-  y2030: '2030',
-  y2035: '2035',
-  y2040: '2040'
+  2026: '2026',
+  2027: '2027',
+  2028: '2028',
+  2029: '2029',
+  2030: '2030',
+  2035: '2035',
+  2040: '2040'
 };
 
 const mockPredictions: Prediction[] = [
@@ -49,7 +54,9 @@ const mockPredictions: Prediction[] = [
     votes: 15,
     userId: '1',
     userName: 'CryptoExpert',
-    voters: {}
+    voters: {},
+    userPhotoURL: '/default-avatar.png',
+    summary: 'This is a summary of the prediction'
   },
   {
     id: 2,
@@ -59,7 +66,9 @@ const mockPredictions: Prediction[] = [
     votes: 8,
     userId: '2',
     userName: 'BitcoinBull',
-    voters: {}
+    voters: {},
+    userPhotoURL: '/default-avatar.png',
+    summary: 'This is a summary of the prediction'
   },
   {
     id: 3,
@@ -69,18 +78,37 @@ const mockPredictions: Prediction[] = [
     votes: -3,
     userId: '3',
     userName: 'CryptoBear',
-    voters: {}
+    voters: {},
+    userPhotoURL: '/default-avatar.png',
+    summary: 'This is a summary of the prediction'
   }
 ];
 
 export default function CoinPage() {
   const params = useParams();
-  const [coin, setCoin] = useState<CoinData | null>(null);
+  const [coin, setCoin] = useState<any>(null);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeFrame>('q1_2025');
+  const [userVotes, setUserVotes] = useState<{[key: string]: 'up' | 'down'}>({});
   const [showPredictionForm, setShowPredictionForm] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeFrame>('q1_2025');
+
+  const timeframes: { value: TimeFrame; label: string }[] = [
+    { value: 'q1_2025', label: 'Q1 2025' },
+    { value: 'q2_2025', label: 'Q2 2025' },
+    { value: 'q3_2025', label: 'Q3 2025' },
+    { value: 'q4_2025', label: 'Q4 2025' },
+    { value: 'q1_2026', label: 'Q1 2026' },
+    { value: 'q2_2026', label: 'Q2 2026' },
+    { value: '2026', label: '2026' },
+    { value: '2027', label: '2027' },
+    { value: '2028', label: '2028' },
+    { value: '2029', label: '2029' },
+    { value: '2030', label: '2030' },
+    { value: '2035', label: '2035' },
+    { value: '2040', label: '2040' },
+  ];
 
   // Fetch coin data
   useEffect(() => {
@@ -102,9 +130,9 @@ export default function CoinPage() {
         const data = await response.json();
         setCoin(data);
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching coin:', error);
-        setError(error instanceof Error ? error.message : 'Failed to fetch coin data');
+      } catch (err) {
+        console.error('Error fetching coin:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch coin data');
         setLoading(false);
       }
     };
@@ -116,68 +144,71 @@ export default function CoinPage() {
   useEffect(() => {
     if (!params.coinId) return;
 
-    const predictionsRef = collection(db, 'predictions');
-    const q = query(
-      predictionsRef,
-      where('coinId', '==', params.coinId),
-      orderBy('createdAt', 'desc')
-    );
+    try {
+      const predictionsRef = collection(db, 'predictions');
+      const q = query(
+        predictionsRef,
+        where('coinId', '==', params.coinId),
+        orderBy('createdAt', 'desc')
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const predictionData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate().toISOString()
-      }));
-      setPredictions(predictionData);
-    }, (error) => {
-      console.error('Error fetching predictions:', error);
-      setError('Failed to fetch predictions');
-    });
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const predictionData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate().toISOString()
+        }));
+        setPredictions(predictionData);
+      }, (err) => {
+        console.error('Error fetching predictions:', err);
+        setError('Failed to fetch predictions');
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Error setting up predictions listener:', err);
+      setError('Failed to load predictions');
+    }
   }, [params.coinId]);
 
-  const handleVote = async (predictionId: string, isUpvote: boolean) => {
-    if (!auth.currentUser) {
-      alert('Please sign in to vote');
-      return;
-    }
-
+  const handleVote = async (predictionId: string, voteType: 'up' | 'down') => {
     try {
-      const predictionRef = doc(db, 'predictions', predictionId);
-      const predictionDoc = await getDoc(predictionRef);
-      
-      if (!predictionDoc.exists()) {
-        console.error('Prediction not found');
-        return;
+      if (!auth.currentUser) {
+        throw new Error('Must be signed in to vote');
       }
 
-      const data = predictionDoc.data();
       const userId = auth.currentUser.uid;
-      const voters = data.voters || {};
-      const userPreviousVote = voters[userId] || 0;
+      const predictionRef = doc(db, 'predictions', predictionId);
+      const currentVote = userVotes[predictionId];
 
-      // Remove previous vote if exists
-      if (userPreviousVote !== 0) {
+      if (currentVote === voteType) {
+        // Remove vote if clicking the same button
         await updateDoc(predictionRef, {
-          votes: increment(-userPreviousVote),
-          [`voters.${userId}`]: 0
+          [`votes.${userId}`]: arrayRemove(voteType)
         });
-      }
-
-      // Add new vote
-      const voteValue = isUpvote ? 1 : -1;
-      if (userPreviousVote !== voteValue) {
+        setUserVotes(prev => {
+          const newVotes = { ...prev };
+          delete newVotes[predictionId];
+          return newVotes;
+        });
+      } else {
+        // Add or change vote
+        if (currentVote) {
+          await updateDoc(predictionRef, {
+            [`votes.${userId}`]: arrayRemove(currentVote)
+          });
+        }
         await updateDoc(predictionRef, {
-          votes: increment(voteValue),
-          [`voters.${userId}`]: voteValue
+          [`votes.${userId}`]: arrayUnion(voteType)
         });
+        setUserVotes(prev => ({
+          ...prev,
+          [predictionId]: voteType
+        }));
       }
-
-    } catch (error) {
-      console.error('Error voting:', error);
-      alert('Failed to vote. Please try again.');
+    } catch (err) {
+      console.error('Error voting:', err);
+      alert(err instanceof Error ? err.message : 'Error voting on prediction');
     }
   };
 
@@ -233,10 +264,31 @@ export default function CoinPage() {
         </div>
       </div>
 
+      {/* Updated Timeframe Selection */}
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-2">
+          {timeframes.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setSelectedTimeframe(value)}
+              className={`px-4 py-2 rounded transition-colors ${
+                selectedTimeframe === value 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Predictions Section */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Price Predictions</h2>
+          <h2 className="text-xl font-semibold">
+            Price Predictions for {timeframes.find(t => t.value === selectedTimeframe)?.label}
+          </h2>
           <button
             onClick={() => setShowPredictionForm(true)}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
@@ -245,23 +297,14 @@ export default function CoinPage() {
           </button>
         </div>
 
-        {predictions.length === 0 ? (
+        {filteredPredictions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No predictions yet. Be the first to make a prediction!
+            No predictions yet for {timeframes.find(t => t.value === selectedTimeframe)?.label}. Be the first to make a prediction!
           </div>
         ) : (
           <>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">Prediction Summary for {timeFrameLabels[selectedTimeframe]}</h3>
-              <select 
-                value={selectedTimeframe}
-                onChange={(e) => setSelectedTimeframe(e.target.value as TimeFrame)}
-                className="border rounded-lg px-3 py-2"
-              >
-                {Object.entries(timeFrameLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
             </div>
 
             {summary && (
@@ -288,79 +331,100 @@ export default function CoinPage() {
 
             <div className="space-y-4">
               {filteredPredictions.map((prediction) => (
-                <div key={prediction.id} className="border rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex flex-col items-center mr-4 w-16">
+                <div key={prediction.id} className="bg-white rounded-lg shadow-md p-6 mb-4">
+                  <div className="flex justify-between items-start mb-4">
+                    {/* User info with profile link */}
+                    <Link 
+                      href={`/profile/${prediction.userId}`}
+                      className="flex items-center group hover:opacity-80 transition-opacity"
+                    >
+                      <Image
+                        src={prediction.userPhotoURL || '/default-avatar.png'}
+                        alt={prediction.userName || 'User'}
+                        width={40}
+                        height={40}
+                        className="rounded-full mr-3"
+                      />
+                      <div>
+                        <span className="font-medium group-hover:text-blue-600 transition-colors">
+                          {prediction.userName || 'Anonymous'}
+                        </span>
+                        <div className="text-sm text-gray-500">
+                          {new Date(prediction.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* Price prediction */}
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">${prediction.price.toLocaleString()}</div>
+                      <div className="text-sm text-gray-500">
+                        {timeframes.find(t => t.value === prediction.timeframe)?.label}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prediction summary */}
+                  <p className="text-gray-700 mb-4">{prediction.summary}</p>
+
+                  {/* Research links */}
+                  {prediction.researchLinks?.length > 0 && (
+                    <div className="mb-4">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Research Links:</div>
+                      <div className="space-y-1">
+                        {prediction.researchLinks.map((link: string, index: number) => {
+                          const fullLink = link.startsWith('http') ? link : `https://${link}`;
+                          let displayUrl = link;
+                          try {
+                            const urlForParsing = link.startsWith('http') ? link : `https://${link}`;
+                            const url = new URL(urlForParsing);
+                            displayUrl = url.hostname;
+                          } catch (e) {
+                            console.error('Error parsing URL:', e);
+                          }
+
+                          return (
+                            <a
+                              key={index}
+                              href={fullLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-blue-600 hover:underline text-sm"
+                            >
+                              {displayUrl}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Voting section */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
                       <button
-                        onClick={() => handleVote(prediction.id, true)}
-                        className={`text-gray-500 hover:text-green-500 ${
-                          prediction.voters?.[auth.currentUser?.uid] === 1 ? 'text-green-500' : ''
+                        onClick={() => handleVote(prediction.id, 'up')}
+                        className={`flex items-center space-x-1 ${
+                          userVotes[prediction.id] === 'up' ? 'text-green-600' : 'text-gray-500'
                         }`}
-                        disabled={!auth.currentUser}
                       >
-                        <ArrowUpIcon className="h-6 w-6" />
+                        <ArrowUpIcon className="h-5 w-5" />
                       </button>
-                      <span className={`font-bold ${
-                        prediction.votes > 0 ? 'text-green-500' : 
-                        prediction.votes < 0 ? 'text-red-500' : 
-                        'text-gray-500'
+                      <span className={`font-medium ${
+                        prediction.votes > 0 ? 'text-green-600' : 
+                        prediction.votes < 0 ? 'text-red-600' : 
+                        'text-gray-600'
                       }`}>
                         {prediction.votes || 0}
                       </span>
                       <button
-                        onClick={() => handleVote(prediction.id, false)}
-                        className={`text-gray-500 hover:text-red-500 ${
-                          prediction.voters?.[auth.currentUser?.uid] === -1 ? 'text-red-500' : ''
+                        onClick={() => handleVote(prediction.id, 'down')}
+                        className={`flex items-center space-x-1 ${
+                          userVotes[prediction.id] === 'down' ? 'text-red-600' : 'text-gray-500'
                         }`}
-                        disabled={!auth.currentUser}
                       >
-                        <ArrowDownIcon className="h-6 w-6" />
+                        <ArrowDownIcon className="h-5 w-5" />
                       </button>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold">${prediction.price.toLocaleString()}</span>
-                        <span className="text-sm text-gray-500">
-                          {timeFrameLabels[prediction.timeframe as TimeFrame]}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 mb-2">{prediction.summary}</p>
-                      {prediction.researchLinks?.length > 0 && (
-                        <div className="text-sm text-blue-500">
-                          {prediction.researchLinks.map((link: string, index: number) => {
-                            // Ensure the link has a protocol
-                            const fullLink = link.startsWith('http') ? link : `https://${link}`;
-                            
-                            // Get display URL
-                            let displayUrl = link;
-                            try {
-                              // Add https:// temporarily if missing, just for parsing
-                              const urlForParsing = link.startsWith('http') ? link : `https://${link}`;
-                              const url = new URL(urlForParsing);
-                              displayUrl = url.hostname;
-                            } catch (e) {
-                              // If parsing fails, use the original link
-                              console.error('Error parsing URL:', e);
-                            }
-
-                            return (
-                              <a
-                                key={index}
-                                href={fullLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block hover:underline text-blue-600 mb-1"
-                              >
-                                {displayUrl}
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center text-sm text-gray-600 mt-2">
-                        <span>by {prediction.userName}</span>
-                        <span>Posted on {new Date(prediction.createdAt).toLocaleDateString()}</span>
-                      </div>
                     </div>
                   </div>
                 </div>

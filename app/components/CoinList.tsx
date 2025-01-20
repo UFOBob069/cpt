@@ -4,26 +4,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/firebase/config';
 import { collection, query, getDocs, where } from 'firebase/firestore';
+import { PredictionSummary } from '@/app/types';
 
 interface Coin {
   id: string;
   name: string;
   symbol: string;
   image: string;
-  current_price: number | null;
-  price_change_percentage_24h: number | null;
-}
-
-interface Prediction {
-  price: number;
-  timeframe: string;
-  votes: number;
-}
-
-interface PredictionSummary {
-  avgPrice: number;
-  totalVotes: number;
-  count: number;
+  current_price: number;
+  price_change_percentage_24h: number;
 }
 
 const formatPrice = (price: number | null | undefined) => {

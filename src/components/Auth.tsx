@@ -2,38 +2,45 @@
 import { useState } from 'react';
 import { auth } from '@/src/firebase/firebase-client';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { User } from '../types';
+import { User } from '@/app/types';
 
-export default function Auth() {
+interface AuthProps {
+  onSignIn?: (user: User) => void;
+  onSignOut?: () => void;
+}
+
+export default function Auth({ onSignIn, onSignOut }: AuthProps) {
   const [error, setError] = useState('');
 
-  const handleGoogleSignIn = async () => {
+  const handleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      setError(err.message);
+      const result = await signInWithPopup(auth, provider);
+      if (onSignIn && result.user) {
+        onSignIn(result.user as User);
+      }
+    } catch (error) {
+      console.error("Error signing in with Google", error);
     }
   };
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut(auth);
-    } catch (err: any) {
-      setError(err.message);
+      if (onSignOut) {
+        onSignOut();
+      }
+    } catch (error) {
+      console.error("Error signing out", error);
     }
   };
-
-  const handleUser = (user: User | null) => {
-    // ... rest of the code
-  }
 
   return (
     <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <div className="flex flex-col space-y-4">
         <button
-          onClick={handleGoogleSignIn}
+          onClick={handleSignIn}
           className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 border-gray-300"
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -57,7 +64,7 @@ export default function Auth() {
           Sign in with Google
         </button>
         <button
-          onClick={handleLogout}
+          onClick={handleSignOut}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
         >
           Logout
